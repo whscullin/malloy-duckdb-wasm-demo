@@ -1,0 +1,20 @@
+{
+  "extends": "./malloy/tsconfig.packages.json",
+  "compilerOptions": {
+    "jsx": "react",
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "include": ["src"],
+  "references": [
+    {
+      "path": "./malloy/packages/malloy"
+    },
+    {
+      "path": "./malloy/packages/malloy-render"
+    },
+    {
+      "path": "./malloy/packages/malloy-db-duckdb-wasm"
+    }
+  ]
+}

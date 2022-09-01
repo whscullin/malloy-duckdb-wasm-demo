@@ -1,0 +1,4 @@
+[submodule "malloy"]
+	path = malloy
+	url = git@github.com:looker-open-source/malloy
+        branch = whscullin/malloy-duckdb-wasm
