@@ -42,7 +42,7 @@ export async function doBuild(): Promise<void> {
     bundle: true,
     minify: !development,
     sourcemap: false,
-    outdir: "www/dist/",
+    outdir: "docs/dist/",
     platform: "browser",
     loader: { [".png"]: "file", [".svg"]: "file", [".ttf"]: "file" },
     watch:

@@ -1,12 +1,14 @@
 import "./airports.malloy"
 
-query: select_start is airports -> {
+// Name: Select Start
+query: airports -> {
   project: *
 }
 
 // --
+// Name: Region Dashboard
 
-query: region_dashboard is airports -> {
+query: airports -> {
   group_by: faa_region
   aggregate: airport_count
   nest:
@@ -15,27 +17,34 @@ query: region_dashboard is airports -> {
 }
 
 // --
+// Name: By District
 
-query: by_district is airports-> {
+query: airports-> {
   group_by: faa_dist
   aggregate: airport_count, percent_of_all_airports
 }
-query: new_york_airports is airports -> {
+
+// --
+// Name: New York Airports
+
+query: airports -> {
   where: faa_dist = 'NYC'
   project: *
 }
 
 // --
+// Name: Most Heliports
 
-query: most_heliports is airports -> {
+query: airports -> {
   group_by: state, county
   aggregate: airport_count, heliport_count
   order_by: heliport_count desc
 }
 
 // --
+// Name: By District Top County
 
-query: by_district_top_county is airports-> {
+query: airports-> {
   group_by: faa_dist
   aggregate: airport_count, percent_of_all_airports
   nest: by_county is {
