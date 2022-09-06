@@ -12,19 +12,8 @@
  */
 /* eslint-disable no-console */
 
-import fs from "fs";
-import path from "path";
 import { build, BuildOptions, serve } from "esbuild";
 import { argv } from "process";
-
-const samplePath = path.join(__dirname, "..", "malloy", "samples", "duckdb");
-const outDir = path.join(__dirname, "..", "docs", "dist");
-fs.mkdirSync(outDir, { recursive: true });
-
-const namesDb = path.join(samplePath, "names", "data", "usa_names.parquet");
-fs.copyFileSync(namesDb, path.join(outDir, "usa_names.parquet"));
-const airportsDb = path.join(samplePath, "faa", "data", "airports.parquet");
-fs.copyFileSync(airportsDb, path.join(outDir, "airports.parquet"));
 
 let port: number | undefined;
 
@@ -36,7 +25,7 @@ export async function doBuild(): Promise<void> {
     entryPoints: {
       main: "./src/index.tsx",
       "editor.worker": "monaco-editor/esm/vs/editor/editor.worker.js",
-      "ts.worker": "monaco-editor/esm/vs/language/typescript/ts.worker",
+      "json.worker": "monaco-editor/esm/vs/language/json/json.worker",
     },
     entryNames: "[name].bundle",
     bundle: true,

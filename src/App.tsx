@@ -13,7 +13,7 @@
 
 import React, { useCallback, useEffect, useState } from "react";
 import styled from "styled-components";
-import { Field, Model, Runtime } from "@malloydata/malloy";
+import { Field, Model, Result, Runtime } from "@malloydata/malloy";
 import { HTMLView } from "@malloydata/render";
 import { DuckDBWASMConnection } from "@malloydata/db-duckdb-wasm";
 import { Controls } from "./Controls";
@@ -28,7 +28,12 @@ import { Sample } from "./types";
 import { SchemaView } from "./SchemaView";
 import { loadSampleQueries, SampleQuery } from "./utils/query";
 
-const DOCS_LINK = "https://looker-open-source.github.io/malloy/documentation/"
+const DOCS_LINK = "https://looker-open-source.github.io/malloy/documentation/";
+const REPO_LINK = "https://github.com/looker-open-source/malloy/";
+const SLACK_LINK =
+  "https://join.slack.com/t/malloy-community/shared_invite/zt-upi18gic-W2saeFu~VfaVM1~HIerJ7w";
+const VSCODE_INSTALL_LINK =
+  "https://github.com/looker-open-source/malloy/blob/main/README.md";
 
 const baseReader = new BrowserURLReader();
 const lookup = new DuckDBWasmLookup();
@@ -43,6 +48,7 @@ export const App: React.FC = () => {
   // Result state
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [result, setResult] = useState<Result>();
   const [rendered, setRendered] = useState<HTMLElement>();
 
   // Select sample UI
@@ -55,8 +61,17 @@ export const App: React.FC = () => {
   const [queries, setQueries] = useState<SampleQuery[]>([]);
 
   // Runnable query data
-  const [importFile, setImportFile] = useState("");
+  const [_importFile, setImportFile] = useState("");
   const [editedQuery, setEditedQuery] = useState("");
+
+  const [search, setSearch] = useState(window.location.search);
+
+  const updateSearchParam = (name: string, value: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set(name, value);
+    history.replaceState("", "", url);
+    setSearch(url.search);
+  };
 
   // Initial load
   useEffect(() => {
@@ -65,7 +80,17 @@ export const App: React.FC = () => {
       const samplesResponse = await fetch("./samples.json");
       const samples = await samplesResponse.json();
       setSamples(samples);
-      setSample(samples[0]);
+      const params = new URLSearchParams(search);
+      const modelName = params.get("m");
+      let sample = samples[0];
+      if (modelName) {
+        for (const s of samples) {
+          if (s.name === modelName) {
+            sample = s;
+          }
+        }
+      }
+      setSample(sample);
     })();
   }, []);
 
@@ -89,19 +114,34 @@ export const App: React.FC = () => {
         const queryUrl = new URL(sample.queryPath, window.location.href);
         const sampleQueries = await loadSampleQueries(queryUrl);
 
+        let sampleQuery = sampleQueries.queries[0];
+        const params = new URLSearchParams(search);
+        const queryName = params.get("q");
+        if (queryName) {
+          for (const q of sampleQueries.queries) {
+            if (q.name === queryName) {
+              sampleQuery = q;
+            }
+          }
+        }
+        const queryText = params.get("t") || sampleQuery?.query || "";
         setImportFile(sampleQueries.importFile);
         setQueries(sampleQueries.queries);
-        setQuery(sampleQueries.queries[0]);
-        setLoadedQuery(sampleQueries.queries[0].query);
-        setEditedQuery(sampleQueries.queries[0].query);
+        setQuery(sampleQuery);
+        setLoadedQuery(queryText);
+        setEditedQuery(queryText);
 
-        connection.database?.registerFileURL(
-          sample.dataPath,
-          new URL(sample.dataUrl, window.location.href).toString()
-        );
+        for (const tableName of sample.dataTables) {
+          connection.database?.registerFileURL(
+            tableName,
+            new URL(tableName, window.location.href).toString()
+          );
+        }
 
         const model = await runtime.getModel(modelUrl);
         setModel(model);
+        updateSearchParam("m", sample.name);
+        setSample(sample);
       }
       setStatus("Ready");
     })();
@@ -110,8 +150,11 @@ export const App: React.FC = () => {
   // Sample Query load
   useEffect(() => {
     if (query) {
-      setLoadedQuery(query.query);
-      setEditedQuery(query.query);
+      const params = new URLSearchParams(search);
+      const queryText = params.get("t") || query?.query || "";
+      setLoadedQuery(queryText);
+      setEditedQuery(queryText);
+      updateSearchParam("q", query.name);
     }
   }, [query]);
 
@@ -132,6 +175,7 @@ export const App: React.FC = () => {
             .limit;
           setStatus(`Running query ${query}`);
           const result = await runnable.run({ rowLimit });
+          setResult(result);
           setStatus("Rendering");
           const rendered = await new HTMLView(document).render(result.data, {
             dataStyles: reader.getHackyAccumulatedDataStyles(),
@@ -160,9 +204,11 @@ export const App: React.FC = () => {
         .loadModel(new URL(sample.modelPath, window.location.href))
         .loadQuery(editedQuery);
       setStatus("Loading Data");
+      updateSearchParam("t", editedQuery);
       const rowLimit = (await runnable.getPreparedResult()).resultExplore.limit;
       setStatus(`Running query`);
       const result = await runnable.run({ rowLimit });
+      setResult(result);
       setStatus("Rendering");
       const rendered = await new HTMLView(document).render(result.data, {
         dataStyles: reader.getHackyAccumulatedDataStyles(),
@@ -175,20 +221,48 @@ export const App: React.FC = () => {
     }
   }, [editedQuery, sample, query]);
 
+  const onSelectSample = useCallback((sample: Sample) => {
+    setSample(sample);
+    updateSearchParam("t", "");
+  }, []);
+
+  const onSelectQuery = useCallback((query: SampleQuery) => {
+    setQuery(query);
+    updateSearchParam("t", "");
+  }, []);
+
   return (
     <React.StrictMode>
       <Header>
-      <h1>
-        <Logo src="logo.png" />
-        Malloy DuckDB WASM Query Demo
-      </h1>
-      <DocsLink href={DOCS_LINK} target="_blank">Malloy Documentation</DocsLink>
+        <h1>
+          <Logo src="logo.png" />
+          Malloy Fiddle
+        </h1>
+        <DocsLink>
+          <a href={DOCS_LINK} target="_blank">
+            Malloy Documentation
+          </a>
+          <br />
+          <a href={REPO_LINK} target="_blank">
+            Malloy Repository on Github
+          </a>
+          <br />
+          <a href={VSCODE_INSTALL_LINK} target="_blank">
+            Malloy VSCode Installation
+          </a>
+          <br />
+          <a href={SLACK_LINK} target="_blank">
+            Join the Malloy Slack Community
+          </a>
+        </DocsLink>
       </Header>
       <Controls
         samples={samples}
-        onSelectSample={setSample}
-        onSelectQuery={setQuery}
+        selectedSample={sample}
+        onSelectSample={onSelectSample}
+        onSelectQuery={onSelectQuery}
         queries={queries}
+        selectedQuery={query}
         onRun={onRun}
       />
       <View>
@@ -204,7 +278,15 @@ export const App: React.FC = () => {
         <Right>
           {error ? <ErrorMessage>{error}</ErrorMessage> : null}
           {rendered ? (
-            <Results rendered={rendered} />
+            <Results
+              rendered={rendered}
+              sql={result?.sql}
+              json={
+                result
+                  ? JSON.stringify(result._queryResult.result, null, 2)
+                  : undefined
+              }
+            />
           ) : (
             <Status status={status} />
           )}
@@ -260,10 +342,10 @@ const Header = styled.div`
   width: 100%;
   display: flex;
   justify-content: space-between;
-`
+`;
 
-const DocsLink = styled.a`
+const DocsLink = styled.div`
   float: right;
   color: #000000;
   font-size: 14px;
-`
+`;

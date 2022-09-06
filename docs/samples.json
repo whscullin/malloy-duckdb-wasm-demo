@@ -1,16 +1,26 @@
 [
   {
     "name": "Airports",
-    "dataPath": "data/airports.parquet",
-    "dataUrl": "dist/airports.parquet",
+    "dataTables": ["airports.parquet"],
     "modelPath": "./airports.malloy",
     "queryPath": "./airports-queries.malloy"
   },
   {
-    "name": "Names",
-    "dataPath": "data/usa_names.parquet",
-    "dataUrl": "dist/usa_names.parquet",
-    "modelPath": "./names.malloy",
-    "queryPath": "./names-queries.malloy"
+    "name": "Auto Recalls",
+    "dataTables": ["auto_recalls.csv"],
+    "modelPath": "./auto_recalls.malloy",
+    "queryPath": "./auto_recalls-queries.malloy"
+  },
+  {
+    "name": "Flights",
+    "dataTables": ["airports.parquet", "carriers.parquet", "flights.parquet"],
+    "modelPath": "./flights.malloy",
+    "queryPath": "./flights-queries.malloy"
+  },
+  {
+    "name": "No Model",
+    "modelPath": "./no_model.malloy",
+    "dataTables": ["auto_recalls.csv", "words.parquet", "ga_sample.parquet","airports.parquet"],
+    "queryPath": "./no_model-queries.malloy"
   }
 ]
